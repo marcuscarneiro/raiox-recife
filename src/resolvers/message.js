@@ -1,11 +1,30 @@
-import uuidv4 from 'uuid/v4';
 import { combineResolvers } from 'graphql-resolvers';
 import { isAuthenticated, isMessageOwner } from './athorization';
+import Sequelize from 'sequelize';
 
 export default {
   Query: {
-    messages: async (parent, args, { models }) => {
-      return await models.Message.findAll();
+    messages: async (parent, { cursor, limit = 100 }, { models }) => {
+      const cursorOptions = cursor
+        ? {
+            where: {
+              createdAt: {
+                [Sequelize.Op.lt]: cursor,
+              },
+            },
+          }
+        : {};
+      const messages = await models.Message.findAll({
+        order: [['createdAt', 'DESC']],
+        limit,
+        ...cursorOptions,
+      });
+      return {
+        edges: messages,
+        pageInfo: {
+          endCursor: messages[messages.length - 1].createdAt,
+        },
+      };
     },
     message: async (parent, { id }, { models }) => {
       return models.Message.findById(id);
@@ -46,8 +65,8 @@ export default {
     ),
   },
   Message: {
-    user: (message, args, { models }) => {
-      return models.users[message.userId];
+    user: async (message, args, { models }) => {
+      return await models.User.findById(message.userId);
     },
   },
 };

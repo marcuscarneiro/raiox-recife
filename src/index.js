@@ -58,7 +58,7 @@ server.applyMiddleware({ app, path: '/graphql' });
 
 sequelize.sync({ froce: eraseDatabaseOnSync }).then(async () => {
   if (eraseDatabaseOnSync) {
-    createWithMessages();
+    createWithMessages(new Date());
   }
   app.listen({ port: 8080 }, () => {
     console.log(
@@ -67,7 +67,7 @@ sequelize.sync({ froce: eraseDatabaseOnSync }).then(async () => {
   });
 });
 
-const createWithMessages = async () => {
+const createWithMessages = async date => {
   await models.User.create(
     {
       username: 'marcuscarneiro',
@@ -77,9 +77,11 @@ const createWithMessages = async () => {
       messages: [
         {
           text: 'It worked...',
+          createdAt: date.setSeconds(date.setSeconds() + 1),
         },
         {
           text: '...so them well!',
+          createdAt: date.setSeconds(date.setSeconds() + 1),
         },
       ],
     },
@@ -95,9 +97,11 @@ const createWithMessages = async () => {
       messages: [
         {
           text: 'Mensagem primeira',
+          createdAt: date.setSeconds(date.setSeconds() + 1),
         },
         {
           text: 'Segunda mensagem',
+          createdAt: date.setSeconds(date.setSeconds() + 1),
         },
       ],
     },
