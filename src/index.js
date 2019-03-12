@@ -1,3 +1,6 @@
+import http from 'http';
+import DataLoader from 'dataloader';
+import loaders from './loaders';
 import 'dotenv/config';
 import cors from 'cors';
 import express from 'express';
@@ -12,7 +15,18 @@ import resolvers from './resolvers';
 import models, { sequelize } from './models';
 
 const app = express();
-const eraseDatabaseOnSync = true;
+
+const batchUsers = async (keys, models) => {
+  const users = await models.User.findAll({
+    where: {
+      id: {
+        $in: keys,
+      },
+    },
+  });
+
+  return keys.map(key => users.find(user => user.id === key));
+};
 
 app.use(cors());
 
@@ -30,6 +44,8 @@ const getMet = async req => {
   }
 };
 
+const userLoader = new DataLoader(keys => batchUsers(keys, models));
+
 const server = new ApolloServer({
   typeDefs: schema,
   resolvers,
@@ -43,24 +59,50 @@ const server = new ApolloServer({
       message,
     };
   },
-  context: async ({ req }) => {
-    const me = await getMet(req);
+  context: async ({ req, connection }) => {
+    if (connection) {
+      return {
+        models,
+        loaders: {
+          user: new DataLoader(keys =>
+            loaders.user.batchUsers(keys, models),
+          ),
+        },
+      };
+    }
 
-    return {
-      models,
-      me,
-      secret: process.env.SECRET,
-    };
+    if (req) {
+      const me = await getMet(req);
+
+      return {
+        models,
+        me,
+        secret: process.env.SECRET,
+        loaders: {
+          user: new DataLoader(keys =>
+            loaders.user.batchUsers(keys, models),
+          ),
+        },
+      };
+    }
   },
 });
 
 server.applyMiddleware({ app, path: '/graphql' });
 
-sequelize.sync({ froce: eraseDatabaseOnSync }).then(async () => {
-  if (eraseDatabaseOnSync) {
+const httpServer = http.createServer(app);
+server.installSubscriptionHandlers(httpServer);
+
+const eraseDatabaseOnSync = true;
+
+const isTest = !!process.env.TEST_DATABASE;
+
+sequelize.sync({ froce: isTest }).then(async () => {
+  if (isTest) {
     createWithMessages(new Date());
   }
-  app.listen({ port: 8080 }, () => {
+
+  httpServer.listen({ port: 8080 }, () => {
     console.log(
       'Apollo Server running on http://localhost:8080/graphql',
     );
