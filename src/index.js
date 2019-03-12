@@ -97,14 +97,16 @@ const eraseDatabaseOnSync = true;
 
 const isTest = !!process.env.TEST_DATABASE;
 
+const port = process.env.PORT || 8000;
+
 sequelize.sync({ froce: isTest }).then(async () => {
   if (isTest) {
     createWithMessages(new Date());
   }
 
-  httpServer.listen({ port: 8080 }, () => {
+  httpServer.listen({ port }, () => {
     console.log(
-      'Apollo Server running on http://localhost:8080/graphql',
+      `Apollo Server running on http://localhost:${port}/graphql`,
     );
   });
 });
