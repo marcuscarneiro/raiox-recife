@@ -47,6 +47,8 @@ const getMet = async req => {
 const userLoader = new DataLoader(keys => batchUsers(keys, models));
 
 const server = new ApolloServer({
+  introspection: true,
+  playground: true,
   typeDefs: schema,
   resolvers,
   formatError: error => {
@@ -97,10 +99,12 @@ const eraseDatabaseOnSync = true;
 
 const isTest = !!process.env.TEST_DATABASE;
 
+const isProduction = !!process.env.DATABASE_URL;
+
 const port = process.env.PORT || 8000;
 
-sequelize.sync({ froce: isTest }).then(async () => {
-  if (isTest) {
+sequelize.sync({ froce: isTest || isProduction }).then(async () => {
+  if (isTest || isProduction) {
     createWithMessages(new Date());
   }
 
